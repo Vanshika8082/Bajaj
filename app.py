@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 load_dotenv()
 
@@ -8,11 +9,16 @@ app = Flask(__name__)
 
 EMAIL = "vanshika3949.beai23@chitkara.edu.in"
 
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+
+
 # Fibonacci
 def get_fibonacci(n):
     arr = [0, 1]
     for i in range(2, n):
-        arr.append(arr[i-1] + arr[i-2])
+        arr.append(arr[i - 1] + arr[i - 2])
     return arr[:n]
 
 # Prime numbers
@@ -52,16 +58,12 @@ def get_lcm(arr):
         result = lcm(result, num)
     return result
 
-
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
         "is_success": True,
         "official_email": EMAIL
-        
     }), 200
-
-import requests
 
 @app.route("/bfhl", methods=["POST"])
 def bfhl():
@@ -103,31 +105,16 @@ def bfhl():
             if not isinstance(value, str):
                 raise ValueError("AI expects question string")
 
-            api_key = "AIzaSyAmXXjQTtgBCPP7IVnBkcph-mBq8FDIA1M"
-
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
-
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": f"Answer in one word: {value}"}
-                        ]
-                    }
-                ]
-            }
-
-            response = requests.post(url, json=payload, timeout=10)
-            res_json = response.json()
-
-            # Safe extraction
-            if "candidates" in res_json:
-                ai_text = res_json["candidates"][0]["content"]["parts"][0]["text"]
-                result = ai_text.strip().split()[0]
-            else:
+            try:
+                model = genai.GenerativeModel("gemini-2.5-flash")
+                response = model.generate_content(
+                    f"Answer in one word only. No punctuation. Question: {value}"
+                )
+                ai_text = response.text.strip()
+                result = ai_text.split()[0]
+            except:
                 # fallback so API never crashes
                 result = "AI"
-
 
         else:
             return jsonify({
